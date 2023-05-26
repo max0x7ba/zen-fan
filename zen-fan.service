@@ -4,7 +4,6 @@ RequiresMountsFor=/sys/class/hwmon
 
 [Service]
 ExecStart=/etc/systemd/system/zen-fan.service.d/zen-fan
-WorkingDirectory=/etc
 TimerSlackNSec=2000000000
 
 [Install]
