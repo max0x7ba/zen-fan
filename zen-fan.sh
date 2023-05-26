@@ -34,7 +34,7 @@ function find_hwmon {
         read <$hwmon/name
         if [[ "$hwmon_name" == "$REPLY" ]]; then
             path=$hwmon
-            v1off || log "$hwmon_name is $PWD/$path."
+            log "$hwmon_name is $PWD/$path."
             return
         fi
     done
@@ -87,7 +87,7 @@ function create_fan_group {
     local -n path=$2
     shift 2
     fans=(${@/#/$path/})
-    v1off || log "Fans ${name} $hwmon_name ${fans[*]}."
+    log "Fans ${name} $hwmon_name ${fans[*]}."
 }
 
 temp_sensors=()
@@ -99,7 +99,7 @@ function create_temp_sensor {
     local hwmon_name=$2
     local -n path=$2
     file=$path/$3
-    v1off || log "${name^^} temperature sensor is $hwmon_name $file."
+    log "${name^^} temperature sensor is $hwmon_name $file."
 }
 
 function apply {
@@ -155,7 +155,7 @@ function on_sigusr {
 # Keep hwmon directory open and resolved to speed up re-opening the files using relative paths.
 cd /sys/class/hwmon
 
-v1off || log "Host config is $host_cfg."
+log "Config is $host_cfg."
 source $host_cfg
 
 function create_sleep2 {
