@@ -9,7 +9,7 @@ Linux hardware monitoring (hwmon) exposes temperature measurements and fan contr
 3. Minimize its own CPU and RAM resource usage. One process with one thread is the ideal.
 4. Be robust against hardware changes. Plugging in a USB device must not break the fan control application.
 
-It was inspired by venerable `fancontrol` script, which breaks every time a USB device is plugged-in and spawns new processes on each iteration.
+`zen-fan` was inspired by `fancontrol` script, learns from `fancontrol` mistakes and doesn't break when a USB device is plugged-in; doesn't spawn new processes/threads on each iteration; uses plain RPM units for fan control in the configuration to avoid having to calibrate pwm units.
 
 # Usage
 
