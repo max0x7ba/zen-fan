@@ -4,10 +4,10 @@
 
 set -eu
 
-if((${NOTIMESTAMP:-0})); then
-    function log { echo "$1"; } # No timestamp when running under systemd.
-else
+if((${TIMESTAMP:-1})); then
     function log { printf '%(%F %T)T %s\n' -1 "$1"; }
+else
+    function log { echo "$1"; }
 fi
 
 host_cfg=$PWD/zen-fan.d/host.$HOSTNAME.cfg

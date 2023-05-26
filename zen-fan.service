@@ -4,7 +4,7 @@ RequiresMountsFor=/sys/class/hwmon
 
 [Service]
 ExecStart=/etc/systemd/system/zen-fan.service.d/zen-fan
-Environment="NOTIMESTAMP=1"
+Environment="TIMESTAMP=0"
 WorkingDirectory=/etc
 TimerSlackNSec=2000000000
 
