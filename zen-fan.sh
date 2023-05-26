@@ -2,17 +2,25 @@
 
 # Copyright (c) 2023 Maxim Egorushkin. MIT License. See the full licence in file LICENSE.
 
-set -e
+set -eu
 
-if [[ "$JOURNAL_STREAM" ]]; then
-    function log { echo "$1"; }
+if [[ "${CONFIGURATION_DIRECTORY:+}" ]]; then
+    function log { echo "$1"; } # No timestamp when running under systemd.
 else
     function log { printf '%(%F %T)T %s\n' -1 "$1"; }
 fi
 
-set -u
+host_cfg=${CONFIGURATION_DIRECTORY:-$PWD}/zen-fan.d/host.$HOSTNAME.cfg
 
-host_cfg=$PWD/zen-fan.d/host.$HOSTNAME.cfg
+declare -i verbose
+function v1off ((verbose<1))
+function v2off ((verbose<2))
+function v3off ((verbose<3))
+function set_verbose {
+    verbose=$(($1 < 0 ? 0 : $1 > 3 ? 3 : $1))
+    v3off && set +x || set -x
+}
+set_verbose ${V:-1}
 
 function raise {
     log "Error: $1" >&2
@@ -26,7 +34,7 @@ function find_hwmon {
         read <$hwmon/name
         if [[ "$hwmon_name" == "$REPLY" ]]; then
             path=$hwmon
-            log "$hwmon_name is $PWD/$path."
+            v1off || log "$hwmon_name is $PWD/$path."
             return
         fi
     done
@@ -40,29 +48,18 @@ function read_temp_sensor {
     temp=$((temp / 1000))
 }
 
-readonly action_names=('-' '' '+')
-function format_action {
-    local -n new_rpm=rpm_fan_$1
-    local -n old_rpm=prev_rpm_fan_$1
-    local -i a=$(((new_rpm > old_rpm) - (new_rpm < old_rpm) + 1))
-    declare -g action_fan_$1="${action_names[$a]}fans $1 ${new_rpm}rpm"
-}
-
-function calculate_rpm {
+function map_temp_to_rpm {
     local -n temp=temp_$1
-    local -i temp_min=$3
-    local -i temp_max=$4
+    local -i temp_min=$2
+    local -i temp_max=$3
     local -i rpm_min=$5
     local -i rpm_max=$6
     local -i rpm_step=$7
     local -i temp_pct=$(( ((temp < temp_min ? temp_min : (temp > temp_max ? temp_max : temp)) - temp_min) * 100 / (temp_max - temp_min) ))
-    declare -g rpm_fan_$2=$(( rpm_min + ((rpm_max - rpm_min) * temp_pct / 100) / rpm_step * rpm_step ))
-    if((verbose>=1)); then
-        format_action $2
-    fi
+    declare -i -g rpm_fan_$4=$(( rpm_min + ((rpm_max - rpm_min) * temp_pct / 100) / rpm_step * rpm_step ))
 }
 
-function adjust_fans {
+function set_fan_rpm {
     local -n new_rpm=rpm_fan_$1
     local -n old_rpm=prev_rpm_fan_$1
     if((old_rpm != new_rpm)); then
@@ -90,7 +87,7 @@ function create_fan_group {
     local -n path=$2
     shift 2
     fans=(${@/#/$path/})
-    log "Fans ${name} $hwmon_name ${fans[*]}."
+    v1off || log "Fans ${name} $hwmon_name ${fans[*]}."
 }
 
 temp_sensors=()
@@ -102,29 +99,10 @@ function create_temp_sensor {
     local hwmon_name=$2
     local -n path=$2
     file=$path/$3
-    log "${name^^} temperature sensor is $hwmon_name $file."
+    v1off || log "${name^^} temperature sensor is $hwmon_name $file."
 }
 
-sensors_to_fan_groups=()
-function map_temp_to_rpm {
-    sensors_to_fan_groups+=("$*")
-}
-
-function log_status {
-    local s f line=""
-    for s in ${temp_sensors[@]}; do
-        local -n temp=temp_$s
-        line+="${s^^} $temp°C, "
-    done
-    for f in ${fan_groups[@]}; do
-        format_action $f
-        local -n action_fan=action_fan_$f
-        line+="$action_fan, "
-    done
-    log "${line:0:-2}."
-}
-
-function map {
+function apply {
     local -n args=$2
     local a
     for a in "${args[@]}"; do
@@ -132,22 +110,41 @@ function map {
     done
 }
 
-function update_fan_speeds {
-    map read_temp_sensor temp_sensors
-    map calculate_rpm sensors_to_fan_groups
-    v1off || log_status
-    map adjust_fans fan_groups
+sensors_to_fan_groups=()
+function set_temp_to_rpm {
+    sensors_to_fan_groups+=("$*")
 }
 
-declare -i verbose
-function v1off ((verbose<1))
-function v2off ((verbose<2))
-function v3off ((verbose<3))
-function set_verbose {
-    verbose=$(($1 < 0 ? 0 : $1 > 3 ? 3 : $1))
-    v3off && set +x || set -x
+function format_temp_sensor {
+    local -n temp=temp_$1
+    line+="${1^^} $temp°C, "
 }
-set_verbose ${V:-1}
+
+readonly action_names=('-' '' '+')
+function format_fan_group {
+    local -n new_rpm=rpm_fan_$1
+    local -n old_rpm=prev_rpm_fan_$1
+    local -i a=$(((new_rpm > old_rpm) - (new_rpm < old_rpm) + 1))
+    line+="${action_names[$a]}fans $1 ${new_rpm}rpm, "
+}
+
+function log_status {
+    local line=""
+    apply format_temp_sensor temp_sensors
+    apply format_fan_group fan_groups
+    log "${line:0:-2}."
+}
+
+function update_fan_speeds {
+    apply read_temp_sensor temp_sensors
+    apply map_temp_to_rpm sensors_to_fan_groups
+    v1off || log_status
+    apply set_fan_rpm fan_groups
+}
+
+function set_sleep_sec {
+    declare -g SLEEP=$1
+}
 
 function on_sigusr {
     set_verbose $((verbose + $1))
@@ -158,7 +155,7 @@ function on_sigusr {
 # Keep hwmon directory open and resolved to speed up re-opening the files using relative paths.
 cd /sys/class/hwmon
 
-log "Host config is $host_cfg."
+v1off || log "Host config is $host_cfg."
 source $host_cfg
 
 function create_sleep2 {
