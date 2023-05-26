@@ -4,13 +4,13 @@
 
 set -eu
 
-if [[ "${CONFIGURATION_DIRECTORY:+}" ]]; then
+if((${NOTIMESTAMP:-0})); then
     function log { echo "$1"; } # No timestamp when running under systemd.
 else
     function log { printf '%(%F %T)T %s\n' -1 "$1"; }
 fi
 
-host_cfg=${CONFIGURATION_DIRECTORY:-$PWD}/zen-fan.d/host.$HOSTNAME.cfg
+host_cfg=$PWD/zen-fan.d/host.$HOSTNAME.cfg
 
 declare -i verbose
 function v1off ((verbose<1))
