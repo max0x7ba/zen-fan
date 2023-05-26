@@ -1,11 +1,16 @@
 #!/bin/bash
-set -eu
+
+set -e
+
+if [[ "$JOURNAL_STREAM" ]]; then
+    function log { echo "$1"; }
+else
+    function log { printf '%(%F %T)T %s\n' -1 "$1"; }
+fi
+
+set -u
 
 host_cfg=$PWD/zen-fan.d/host.$HOSTNAME.cfg
-
-function log {
-    printf '%(%F %T)T %s\n' -1 "$1"
-}
 
 function raise {
     log "Error: $1" >&2
