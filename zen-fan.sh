@@ -87,7 +87,7 @@ function create_fan_group {
     local -n path=$2
     shift 2
     fans=(${@/#/$path/})
-    log "Fans ${name} $hwmon_name ${fans[*]}."
+    log "Fans $name $hwmon_name ${fans[*]}."
 }
 
 temp_sensors=()
@@ -99,7 +99,7 @@ function create_temp_sensor {
     local hwmon_name=$2
     local -n path=$2
     file=$path/$3
-    log "${name^^} temperature sensor is $hwmon_name $file."
+    log "$name temperature sensor is $hwmon_name $file."
 }
 
 function apply {
@@ -125,7 +125,7 @@ function format_fan_group {
     local -n new_rpm=rpm_fan_$1
     local -n old_rpm=prev_rpm_fan_$1
     local -i a=$(((new_rpm > old_rpm) - (new_rpm < old_rpm) + 1))
-    line+="${action_names[$a]}fans $1 ${new_rpm}rpm, "
+    line+="$1 fans ${new_rpm}rpm${action_names[$a]}, "
 }
 
 function log_status {
