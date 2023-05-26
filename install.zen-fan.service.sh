@@ -1,5 +1,7 @@
 #!/bin/bash -x
 
+# Copyright (c) 2023 Maxim Egorushkin. MIT License. See the full licence in file LICENSE.
+
 cd "$(dirname "$0")"
 
 systemctl stop zen-fan.service

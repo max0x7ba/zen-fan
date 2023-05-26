@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Copyright (c) 2023 Maxim Egorushkin. MIT License. See the full licence in file LICENSE.
+
 set -e
 
 if [[ "$JOURNAL_STREAM" ]]; then

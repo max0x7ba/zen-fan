@@ -9,7 +9,7 @@ Linux hardware monitoring (hwmon) exposes temperature measurements and fan contr
 3. Minimize its own CPU and RAM resource usage. One process with one thread is the ideal.
 4. Be robust against hardware changes. Plugging in a USB device must not break the fan control application.
 
-It was inspired by venerable fancontrol script, which stops working every time a new USB device is plugged in and spawns new processes on each iteration.
+It was inspired by venerable `fancontrol` script, which breaks every time a USB device is plugged-in and spawns new processes on each iteration.
 
 # Usage
 
@@ -25,11 +25,20 @@ sudo -E ./zen-fan.sh # Test zen-fan.d/host.$HOSTNAME.cfg
 ```
 
 ## Install systemd service
-Once your configuration is ready, you may like to install zen-fan as systemd service.
+Once your configuration is ready, you may like to install `zen-fan` systemd service:
 
 ```
 cd zen-fan
 sudo ./install.zen-fan.service.sh
+```
+
+Examine service status:
+
+```
 systemctl status zen-fan
 journalctl -u zen-fan
 ```
+
+---
+
+Copyright (c) 2023 Maxim Egorushkin. MIT License. See the full licence in file LICENSE.
