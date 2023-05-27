@@ -8,6 +8,7 @@ Linux hardware monitoring `hwmon` exposes temperature measurements and fan contr
 2. Control fan speeds by writing into fan speed control files.
 3. Minimize its own CPU and RAM resource usage. One process with one thread is the ideal.
 4. Be robust against hardware changes. Plugging in a USB device must not break the fan control application.
+5. Be as simple as possible.
 
 ## Implementation notes
 To achieve its design objectives `zen-fan`:
@@ -16,11 +17,10 @@ To achieve its design objectives `zen-fan`:
 * Doesn't invoke any other executables and doesn't depend on any other software.
 * Doesn't spawn any processes/threads on each iteration.
 
-`zen-fan` was inspired by `fancontrol` script. `zen-fan` learns from `fancontrol` mistakes and:
+`zen-fan` was inspired by [`fancontrol`][1]. Unlike `fancontrol`,`zen-fan`:
 * Doesn't fail to start when hardware changes, a USB device is plugged-in/out.
 * Doesn't crash when fans have been adjusted by another application.
 * Doesn't spawn new processes on each iteration.
-* Uses human-friendly RPM units for fan control in the configuration. No PWM to RPM calibration is necessary.
 
 # Usage
 
@@ -94,3 +94,6 @@ sudo pkill -USR2 zen-fan
 ---
 
 Copyright (c) 2023 Maxim Egorushkin. MIT License. See the full licence in file LICENSE.
+
+
+[1]: https://github.com/lm-sensors/lm-sensors/blob/master/doc/fancontrol.txt
