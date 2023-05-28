@@ -27,6 +27,14 @@ function raise {
     exit 1
 }
 
+function apply {
+    local a
+    local -n args=$2
+    for a in "${args[@]}"; do
+        $1 $a
+    done
+}
+
 function find_hwmon {
     local hwmon_name=$1
     local -n path=$1
@@ -56,35 +64,31 @@ function map_temp_to_rpm {
     local -i rpm_max=$6
     local -i rpm_step=$7
     local -i temp_pct=$(( ((temp < temp_min ? temp_min : (temp > temp_max ? temp_max : temp)) - temp_min) * 100 / (temp_max - temp_min) ))
-    declare -i -g rpm_fan_$4=$(( rpm_min + ((rpm_max - rpm_min) * temp_pct / 100) / rpm_step * rpm_step ))
+    declare -gi rpm_fan_$4=$(( rpm_min + ((rpm_max - rpm_min) * temp_pct / 100) / rpm_step * rpm_step ))
 }
 
 function set_fan_rpm {
+    local fan=$1
+    v2off || { read <${fan}_input; log "$fan current rpm is $REPLY, new $new_rpm."; }
+    echo $new_rpm >${fan}_target
+}
+
+function update_fan_group_rpm {
     local -n new_rpm=rpm_fan_$1
     local -n old_rpm=prev_rpm_fan_$1
     if((old_rpm != new_rpm)); then
         old_rpm=$new_rpm
-        local -n fans=fans_$1
-        for fan in ${fans[@]}; do
-            if((verbose>=2)); then
-                read <${fan}_input
-                echo "$fan $REPLY -> $new_rpm."
-            fi
-            echo $new_rpm >${fan}_target
-        done
+        apply set_fan_rpm fans_$1
     fi
 }
 
 fan_groups=()
 function create_fan_group {
-    local name=$1
     fan_groups+=($1)
-    declare -g -i rpm_fan_$1
-    declare -g -i prev_rpm_fan_$1=0
+    local name=$1 hwmon_name=$2
+    declare -gi rpm_fan_$1 prev_rpm_fan_$1=0
     declare -g action_fan_$1
-    local -n fans=fans_$1
-    local hwmon_name=$2
-    local -n path=$2
+    local -n fans=fans_$1 path=$2
     shift 2
     fans=(${@/#/$path/})
     log "Fans $name $hwmon_name ${fans[*]}."
@@ -92,22 +96,12 @@ function create_fan_group {
 
 temp_sensors=()
 function create_temp_sensor {
-    local name=$1
     temp_sensors+=($1)
+    local name=$1 hwmon_name=$2
+    local -n file=sensor_file_$1 path=$2
     declare -g temp_$1
-    local -n file=sensor_file_$1
-    local hwmon_name=$2
-    local -n path=$2
     file=$path/$3
     log "$name temperature sensor is $hwmon_name $file."
-}
-
-function apply {
-    local -n args=$2
-    local a
-    for a in "${args[@]}"; do
-        $1 $a
-    done
 }
 
 sensors_to_fan_groups=()
@@ -117,14 +111,14 @@ function set_temp_to_rpm {
 
 function format_temp_sensor {
     local -n temp=temp_$1
-    line+="${1^^} $temp°C, "
+    line+="$1 $temp°C, "
 }
 
 readonly action_names=('-' '' '+')
 function format_fan_group {
     local -n new_rpm=rpm_fan_$1
     local -n old_rpm=prev_rpm_fan_$1
-    local -i a=$(((new_rpm > old_rpm) - (new_rpm < old_rpm) + 1))
+    local -i a=$(( (new_rpm > old_rpm) - (new_rpm < old_rpm) + 1 ))
     line+="$1 fans ${new_rpm}rpm${action_names[$a]}, "
 }
 
@@ -139,7 +133,7 @@ function update_fan_speeds {
     apply read_temp_sensor temp_sensors
     apply map_temp_to_rpm sensors_to_fan_groups
     v1off || log_status
-    apply set_fan_rpm fan_groups
+    apply update_fan_group_rpm fan_groups
 }
 
 function set_sleep_sec {
@@ -159,9 +153,8 @@ log "Config is $host_cfg."
 source $host_cfg
 
 function create_sleep2 {
-    coproc read
-    declare -r -g sleep2_fd=${COPROC[0]}
-    function sleep2 { read -t$1 -u$sleep2_fd || (($?>128)); }
+    coproc sleep2_pipe { read; }
+    function sleep2 { read -t$1 -u${sleep2_pipe[0]} || (($?>128)); }
 }
 
 trap "" SIGUSR1 SIGUSR2
