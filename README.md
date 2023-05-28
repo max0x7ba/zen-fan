@@ -2,7 +2,7 @@
 Minimalist Linux fan control designed to be simple and powerful.
 
 ## Design objectives
-Linux hardware monitoring `hwmon` exposes temperature measurements and fan controls as files in `sysfs`. An ideal fan control application would:
+Linux hardware monitoring [`hwmon`][2] exposes temperature measurements and fan controls as files in `sysfs`. An ideal fan control application would:
 
 1. Obtain temperature measurements by reading from the sensor files.
 2. Control fan speeds by writing into fan speed control files.
@@ -97,3 +97,4 @@ Copyright (c) 2023 Maxim Egorushkin. MIT License. See the full licence in file L
 
 
 [1]: https://github.com/lm-sensors/lm-sensors/blob/master/doc/fancontrol.txt
+[2]: https://docs.kernel.org/hwmon/sysfs-interface.html
