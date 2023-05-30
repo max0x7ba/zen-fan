@@ -96,6 +96,11 @@ May 30 01:06:51 supernova zen-fan[8327]: Fan control loop started. Adjust fans e
 sudo pkill -HUP zen-fan
 ```
 
+Example output:
+```
+May 30 01:24:35 supernova zen-fan[8327]: CPU 43°C, GPU 44°C, hwmon4/fan1 600rpm, hwmon4/fan2 600rpm, hwmon4/fan3 601rpm, hwmon4/fan4 301rpm, hwmon4/fan5 300rpm.
+```
+
 ## Increase log verbosity
 ```
 sudo pkill -USR1 zen-fan
