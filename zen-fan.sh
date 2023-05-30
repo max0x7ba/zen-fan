@@ -69,7 +69,6 @@ function map_temp_to_rpm {
 
 function set_fan_rpm {
     local fan=$1
-    v2off || { read <${fan}_input; log "$fan current rpm is $REPLY, new $new_rpm."; }
     echo $new_rpm >${fan}_target
 }
 
@@ -114,12 +113,23 @@ function format_temp_sensor {
     line+="$1 $temp°C, "
 }
 
-readonly action_names=('-' '' '+')
+function format_fan {
+    local fan=$1
+    local cur_rpm
+    read cur_rpm <${fan}_input
+    line+="$fan ${cur_rpm}rpm, "
+}
+
 function format_fan_group {
+    apply format_fan fans_$1
+}
+
+readonly action_names=('-' '' '+')
+function format_fan_group_target {
     local -n new_rpm=rpm_fan_$1
     local -n old_rpm=prev_rpm_fan_$1
     local -i a=$(( (new_rpm > old_rpm) - (new_rpm < old_rpm) + 1 ))
-    line+="$1 fans ${new_rpm}rpm${action_names[$a]}, "
+    line+="$1 fans target ${new_rpm}rpm${action_names[$a]}, "
 }
 
 function log_status {
@@ -129,15 +139,24 @@ function log_status {
     log "${line:0:-2}."
 }
 
+function log_target_rpm {
+    local line=""
+    apply format_temp_sensor temp_sensors
+    apply format_fan_group_target fan_groups
+    log "${line:0:-2}."
+}
+
 function update_fan_speeds {
     apply read_temp_sensor temp_sensors
+    v2off || log_status
     apply map_temp_to_rpm sensors_to_fan_groups
-    v1off || log_status
+    v1off || log_target_rpm
     apply update_fan_group_rpm fan_groups
 }
 
+sleep_sec=${SLEEP:-7}
 function set_sleep_sec {
-    declare -g SLEEP=$1
+    sleep_sec=$1
 }
 
 function on_sigusr {
@@ -152,12 +171,16 @@ cd /sys/class/hwmon
 log "Config is $host_cfg."
 source $host_cfg
 
+# Environment overrides config.
+set_verbose ${V:-$verbose}
+set_sleep_sec ${SLEEP:-$sleep_sec}
+
 function create_sleep2 {
     coproc sleep2_pipe { read; }
     function sleep2 { read -t$1 -u${sleep2_pipe[0]} || (($?>128)); }
 }
 
-trap "" SIGUSR1 SIGUSR2
+trap "" SIGUSR1 SIGUSR2 SIGHUP
 
 # cd ~/src/zen-fan/; TEST=1 sudo -E ./zen-fan.sh
 if((${TEST:-0})); then
@@ -175,6 +198,7 @@ if((${TEST:-0})); then
         done
         sleep2 2
         kill -USR1 $pid
+        kill -HUP $pid
     }
 
     SLEEP=0.5
@@ -182,13 +206,19 @@ if((${TEST:-0})); then
     test_signals $$ &
 fi
 
-update_fan_speeds
+# Always log on start.
+function update_and_log {
+    local -i verbose=2
+    update_fan_speeds
+}
+update_and_log
 
 declare -i N=${N:--1}
 if((N)); then
     create_sleep2
     trap 'on_sigusr +1 SIGUSR1' SIGUSR1
     trap 'on_sigusr -1 SIGUSR2' SIGUSR2
+    trap 'log_status' SIGHUP
 
     readonly sleep_sec=${SLEEP:-7}
     trap 'log "Fan control loop terminated."' EXIT

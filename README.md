@@ -50,43 +50,58 @@ cd zen-fan
 sudo ./install.zen-fan.service.sh
 ```
 
-### Examine service status
+## Examine service status
 
 ```
 systemctl status zen-fan
 ```
 
-### Examine service log
 ```
-journalctl -u zen-fan
+● zen-fan.service - zen-fan fan control service
+     Loaded: loaded (/etc/systemd/system/zen-fan.service; enabled; vendor preset: enabled)
+     Active: active (running) since Tue 2023-05-30 01:06:51 BST; 8min ago
+   Main PID: 8327 (zen-fan)
+      Tasks: 2 (limit: 134671)
+     Memory: 972.0K
+        CPU: 27ms
+     CGroup: /system.slice/zen-fan.service
+             ├─8327 /bin/bash /etc/systemd/system/zen-fan.service.d/zen-fan
+             └─8330 /bin/bash /etc/systemd/system/zen-fan.service.d/zen-fan
+
+May 30 01:06:51 supernova zen-fan[8327]: k10temp is /sys/class/hwmon/hwmon3.
+May 30 01:06:51 supernova zen-fan[8327]: corsaircpro is /sys/class/hwmon/hwmon4.
+May 30 01:06:51 supernova zen-fan[8327]: CPU temperature sensor is k10temp hwmon3/temp1.
+May 30 01:06:51 supernova zen-fan[8327]: GPU temperature sensor is corsaircpro hwmon4/temp3.
+May 30 01:06:51 supernova zen-fan[8327]: Fans front corsaircpro hwmon4/fan1 hwmon4/fan2 hwmon4/fan3.
+May 30 01:06:51 supernova zen-fan[8327]: Fans back corsaircpro hwmon4/fan4 hwmon4/fan5.
+May 30 01:06:51 supernova zen-fan[8327]: CPU 46°C, GPU 45°C, hwmon4/fan1 599rpm, hwmon4/fan2 601rpm, hwmon4/fan3 600rpm, hwmon4/fan4 301r…an5 300rpm.
+May 30 01:06:51 supernova zen-fan[8327]: CPU 46°C, GPU 45°C, front fans target 600rpm+, back fans target 300rpm+.
+May 30 01:06:51 supernova zen-fan[8327]: Fan control loop started. Adjust fans every 7 seconds for -1 iterations.
+```
+
+## Examine service log
+```
+journalctl -u zen-fan -n 3
 ```
 
 Example output:
 ```
-May 27 00:58:42 supernova systemd[1]: Started zen-fan fan control service.
-May 27 00:58:42 supernova zen-fan[117178]: Config is /etc/zen-fan.d/host.supernova.cfg.
-May 27 00:58:42 supernova zen-fan[117178]: k10temp is /sys/class/hwmon/hwmon4.
-May 27 00:58:42 supernova zen-fan[117178]: corsaircpro is /sys/class/hwmon/hwmon5.
-May 27 00:58:42 supernova zen-fan[117178]: CPU temperature sensor is k10temp hwmon4/temp1.
-May 27 00:58:42 supernova zen-fan[117178]: GPU temperature sensor is corsaircpro hwmon5/temp3.
-May 27 00:58:42 supernova zen-fan[117178]: Fans front corsaircpro hwmon5/fan1 hwmon5/fan2 hwmon5/fan3.
-May 27 00:58:42 supernova zen-fan[117178]: Fans back corsaircpro hwmon5/fan4 hwmon5/fan5.
-May 27 00:58:42 supernova zen-fan[117178]: CPU 48°C, GPU 46°C, front fans 600rpm+, back fans 300rpm+.
-May 27 00:58:43 supernova zen-fan[117178]: Fan control loop started. Adjust fans every 7 seconds for -1 iterations.
-May 27 00:58:50 supernova zen-fan[117178]: CPU 46°C, GPU 47°C, front fans 600rpm, back fans 300rpm.
-May 27 00:58:57 supernova zen-fan[117178]: CPU 66°C, GPU 47°C, front fans 1100rpm+, back fans 300rpm.
-May 27 00:59:04 supernova zen-fan[117178]: CPU 53°C, GPU 47°C, front fans 650rpm-, back fans 300rpm.
-May 27 00:59:12 supernova zen-fan[117178]: CPU 47°C, GPU 47°C, front fans 600rpm-, back fans 300rpm.
-May 27 00:59:19 supernova zen-fan[117178]: CPU 46°C, GPU 47°C, front fans 600rpm, back fans 300rpm.
-May 27 00:59:26 supernova zen-fan[117178]: CPU 46°C, GPU 47°C, front fans 600rpm, back fans 300rpm.
+May 30 01:06:51 supernova zen-fan[8327]: CPU 46°C, GPU 45°C, hwmon4/fan1 599rpm, hwmon4/fan2 601rpm, hwmon4/fan3 600rpm, hwmon4/fan4 301rpm, hwmon4/fan5 300rpm.
+May 30 01:06:51 supernova zen-fan[8327]: CPU 46°C, GPU 45°C, front fans target 600rpm+, back fans target 300rpm+.
+May 30 01:06:51 supernova zen-fan[8327]: Fan control loop started. Adjust fans every 7 seconds for -1 iterations.
 ```
 
-### Increase log verbosity
+## Log current state
+```
+sudo pkill -HUP zen-fan
+```
+
+## Increase log verbosity
 ```
 sudo pkill -USR1 zen-fan
 ```
 
-### Decrease log verbosity
+## Decrease log verbosity
 ```
 sudo pkill -USR2 zen-fan
 ```
