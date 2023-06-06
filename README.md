@@ -17,6 +17,8 @@ To achieve its design objectives `zen-fan`:
 * Doesn't invoke any other executables and doesn't depend on any other software.
 * Doesn't spawn any processes/threads on each iteration.
 
+Empirical average CPU time of one iteration is under 27 milliseconds, resident size is under 4MB.
+
 `zen-fan` was inspired by [`fancontrol`][1]. Unlike `fancontrol`,`zen-fan`:
 * Doesn't fail to start when hardware changes, a USB device is plugged-in/out.
 * Doesn't crash when fans have been adjusted by another application.
@@ -53,7 +55,7 @@ sudo ./install.zen-fan.service.sh
 ## Examine service status
 
 ```
-systemctl status zen-fan
+systemctl --no-pager status zen-fan
 ```
 
 ```
@@ -81,7 +83,7 @@ May 30 01:06:51 supernova zen-fan[8327]: Fan control loop started. Adjust fans e
 
 ## Examine service log
 ```
-journalctl -u zen-fan -n 3
+journalctl --no-pager -u zen-fan -n 3
 ```
 
 Example output:
@@ -91,7 +93,7 @@ May 30 01:06:51 supernova zen-fan[8327]: CPU 46°C, GPU 45°C, front fans target
 May 30 01:06:51 supernova zen-fan[8327]: Fan control loop started. Adjust fans every 7 seconds for -1 iterations.
 ```
 
-## Log current state
+## Log current temperatures and fan speeds
 ```
 sudo pkill -HUP zen-fan
 ```
