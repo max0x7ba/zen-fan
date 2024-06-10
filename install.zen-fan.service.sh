@@ -5,6 +5,7 @@
 cd "$(dirname "$0")"
 
 systemctl stop zen-fan.service
+systemctl disable zen-fan.service
 
 [[ -d /etc/systemd/system/zen-fan.service.d ]] || mkdir /etc/systemd/system/zen-fan.service.d
 cp zen-fan.sh /etc/systemd/system/zen-fan.service.d/zen-fan

@@ -11,4 +11,4 @@ WorkingDirectory=/etc
 TimerSlackNSec=2000000000
 
 [Install]
-WantedBy=basic.target
+WantedBy=default.target
