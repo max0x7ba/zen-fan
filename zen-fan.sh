@@ -12,15 +12,15 @@ fi
 
 host_cfg=$PWD/zen-fan.d/host.$HOSTNAME.cfg
 
-declare -i verbose
+declare -i verbose=1
 function v1off ((verbose<1))
 function v2off ((verbose<2))
 function v3off ((verbose<3))
 function set_verbose {
     verbose=$(($1 < 0 ? 0 : $1 > 3 ? 3 : $1))
+    log "set_verbose $verbose"
     v3off && set +x || set -x
 }
-set_verbose ${V:-1}
 
 function raise {
     log "Error: $1" >&2
@@ -154,9 +154,10 @@ function update_fan_speeds {
     apply update_fan_group_rpm fan_groups
 }
 
-sleep_sec=${SLEEP:-7}
+declare -i sleep_sec=7
 function set_sleep_sec {
     sleep_sec=$1
+    log "set_sleep_sec $1"
 }
 
 function on_sigusr {
@@ -171,9 +172,9 @@ cd /sys/class/hwmon
 log "Config is $host_cfg."
 source $host_cfg
 
-# Environment overrides config.
-set_verbose ${V:-$verbose}
-set_sleep_sec ${SLEEP:-$sleep_sec}
+# Environment variables override config.
+if [[ -v V ]]; then set_verbose $V; fi
+if [[ -v SLEEP ]]; then set_sleep_sec $SLEEP; fi
 
 function create_sleep2 {
     coproc sleep2_pipe { read; }
@@ -220,7 +221,6 @@ if((N)); then
     trap 'on_sigusr -1 SIGUSR2' SIGUSR2
     trap 'log_status' SIGHUP
 
-    readonly sleep_sec=${SLEEP:-7}
     trap 'log "Fan control loop terminated."' EXIT
     log "Fan control loop started. Adjust fans every $sleep_sec seconds for $N iterations."
     while((N -= N > 0)); do
