@@ -81,6 +81,10 @@ May 30 01:06:51 supernova zen-fan[8327]: CPU 46°C, GPU 45°C, front fans target
 May 30 01:06:51 supernova zen-fan[8327]: Fan control loop started. Adjust fans every 7 seconds for -1 iterations.
 ```
 
+The second pid is a `bash` coprocess used for sleeping on with 0-CPU-cycle cost. It is spawned once at start, and all it does is block in `read` syscall until termination.
+
+As opposed to invoking `sleep` command, spawning a new sub-process for every sleep, which is a relatively astronomical cost to pay for sleeping. Spawning a new sub-process burns a lot of CPU cycles heating up the CPU, defeating the purpose of zen-fan.
+
 ## Examine service log
 ```
 journalctl --no-pager -u zen-fan -n 3
