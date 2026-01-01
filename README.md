@@ -83,7 +83,8 @@ May 30 01:06:51 supernova zen-fan[8327]: Fan control loop started. Adjust fans e
 
 The second pid is a `bash` coprocess used for sleeping on with 0-CPU-cycle cost. It is spawned once at start, and all it does is block in `read` syscall until termination.
 
-As opposed to invoking `sleep` command, spawning a new sub-process for every sleep, which is a relatively astronomical cost to pay for sleeping. Spawning a new sub-process burns a lot of CPU cycles heating up the CPU, defeating the purpose of zen-fan.
+As opposed to invoking `sleep` command, spawning a new sub-process for every sleep, which is a relatively astronomical cost to pay for sleeping. The cost aggravates with triggering `sar` system activity accounting to record this otherwise unnecessary sub-process creation noise; `auditd` and `apparmor` checks; keeps incrementing the kernel pid counter, causing assignment of ever larger/longer pids to new processes, making them harder read and wonder about the causes of the ever higher pids. Spawning sub-processes burns a lot of CPU cycles heating up the CPU, defeating the purpose of zen-fan.
+
 
 ## Examine service log
 ```
