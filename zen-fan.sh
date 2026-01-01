@@ -139,11 +139,15 @@ function log_status {
     log "${line:0:-2}."
 }
 
+declare prev_target_rpm_line=''
 function log_target_rpm {
     local line=""
     apply format_temp_sensor temp_sensors
     apply format_fan_group_target fan_groups
-    log "${line:0:-2}."
+    if [[ "$line" != "$prev_target_rpm_line" ]]; then
+        log "${line:0:-2}."
+        prev_target_rpm_line="$line"
+    fi
 }
 
 function update_fan_speeds {
