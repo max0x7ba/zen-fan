@@ -139,14 +139,14 @@ function log_status {
     log "${line:0:-2}."
 }
 
-declare prev_target_rpm_line=''
 function log_target_rpm {
     local line=""
     apply format_temp_sensor temp_sensors
     apply format_fan_group_target fan_groups
-    if [[ "$line" != "$prev_target_rpm_line" ]]; then
+
+    # Log when any fan target rpm changes.
+    if [[ "$line" =~ rpm[-+] ]]; then
         log "${line:0:-2}."
-        prev_target_rpm_line="$line"
     fi
 }
 
