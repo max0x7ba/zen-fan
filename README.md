@@ -1,7 +1,9 @@
 # zen-fan
-Minimalist Linux fan control designed to be simple and powerful.
+Minimalist Linux fan control designed to be simple, efficient, robust and flexible.
 
 ## Design objectives
+Zen principle «do more with less» is the key design pattern.
+
 Linux hardware monitoring [`hwmon`][2] exposes temperature measurements and fan controls as files in `sysfs`. An ideal fan control application would:
 
 1. Obtain temperature measurements by reading from the sensor files.
@@ -20,16 +22,16 @@ To achieve its design objectives `zen-fan`:
 Empirical average CPU time of one iteration is under 27 milliseconds, resident size is under 4MB.
 
 `zen-fan` was inspired by [`fancontrol`][1]. Unlike `fancontrol`,`zen-fan`:
-* Doesn't fail to start when hardware changes, a USB device is plugged-in/out.
+* Doesn't fail to start when hardware changes, devices get different identifiers on reboot, or a USB device is plugged-in/out.
 * Doesn't crash when fans have been adjusted by another application.
 * Doesn't spawn new processes on each iteration.
 
 # Usage
 
 ## Configuration
-Configuration is stored in `zen-fan.d` directory. Use [host.supernova.cfg](zen-fan.d/host.supernova.cfg) as an example.
+Configuration is stored in `zen-fan.d` directory. The hostname in configuration file name enables keeping any number of host-specific configuration files in the same directory / git repository.
 
-Copy and modify an existing configuration file to suit your machine and test it. E.g.:
+Use [host.supernova.cfg](zen-fan.d/host.supernova.cfg) as an example. Copy and modify an existing configuration file to suit your machine sensors and fan controllers and test it. E.g.:
 
 ```
 cd zen-fan
@@ -38,14 +40,14 @@ sudo -E ./zen-fan.sh # Loads zen-fan.d/host.$HOSTNAME.cfg
 ```
 
 ## Run from the source directory
-Once your configuration is ready, you can run `zen-fan` from the source directory as is:
+Once the configuration is ready, you can keep running `zen-fan` from the source directory as is:
 ```
 cd zen-fan
 sudo -E ./zen-fan.sh
 ```
 
-## Install systemd service
-Once your configuration is ready, you may like to install `zen-fan` as systemd service:
+# Install systemd service
+For automatic start on boot, you may like to install `zen-fan` as a system-wide systemd service:
 
 ```
 cd zen-fan
@@ -81,9 +83,10 @@ May 30 01:06:51 supernova zen-fan[8327]: CPU 46°C, GPU 45°C, front fans target
 May 30 01:06:51 supernova zen-fan[8327]: Fan control loop started. Adjust fans every 7 seconds for -1 iterations.
 ```
 
-The second pid is a `bash` coprocess used for sleeping on with 0-CPU-cycle cost. It is spawned once at start, and all it does is block in `read` syscall until termination.
+### The second pid
+The second pid is a `bash` coprocess used for sleeping on with 0-CPU-cycle cost. It is spawned once at start, and all it does is block in `read` syscall until termination. The main pid sleeps by blocking on `read` from the coprocess' stdout with a timeout, and this is as cheap a `sleep` as it gets.
 
-As opposed to invoking `sleep` command, spawning a new sub-process for every sleep, which is a relatively astronomical cost to pay for sleeping. The cost aggravates with triggering `sar` system activity accounting to record this otherwise unnecessary sub-process creation noise; `auditd` and `apparmor` checks; keeps incrementing the kernel pid counter, causing assignment of ever larger/longer pids to new processes, making them harder read and wonder about the causes of the ever higher pids. Spawning sub-processes burns a lot of CPU cycles heating up the CPU, defeating the purpose of zen-fan.
+As opposed to invoking `sleep` command, spawning a new sub-process for every sleep, which is a relatively astronomical cost to pay for sleeping. The cost aggravates with triggering `sar` system activity accounting to record this otherwise unnecessary sub-process creation noise; `auditd` and `apparmor` checks; keeps incrementing the kernel pid counter, causing assignment of ever larger/longer pids to new processes, making them harder read and wonder about the causes of the ever higher pids. Spawning sub-processes burns a lot of CPU cycles heating up the CPU, which would defeat the purpose of zen-fan.
 
 
 ## Examine service log
@@ -96,16 +99,6 @@ Example output:
 May 30 01:06:51 supernova zen-fan[8327]: CPU 46°C, GPU 45°C, hwmon4/fan1 599rpm, hwmon4/fan2 601rpm, hwmon4/fan3 600rpm, hwmon4/fan4 301rpm, hwmon4/fan5 300rpm.
 May 30 01:06:51 supernova zen-fan[8327]: CPU 46°C, GPU 45°C, front fans target 600rpm+, back fans target 300rpm+.
 May 30 01:06:51 supernova zen-fan[8327]: Fan control loop started. Adjust fans every 7 seconds for -1 iterations.
-```
-
-## Log current temperatures and fan speeds
-```
-sudo pkill -HUP zen-fan
-```
-
-Example output:
-```
-May 30 01:24:35 supernova zen-fan[8327]: CPU 43°C, GPU 44°C, hwmon4/fan1 600rpm, hwmon4/fan2 600rpm, hwmon4/fan3 601rpm, hwmon4/fan4 301rpm, hwmon4/fan5 300rpm.
 ```
 
 ## Increase log verbosity
