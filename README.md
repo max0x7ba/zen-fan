@@ -47,7 +47,7 @@ sudo -E ./zen-fan.sh
 ```
 
 # Install systemd service
-For automatic start on boot, you may like to install `zen-fan` as a system-wide systemd service:
+For automatic start on boot, you may like to install `zen-fan` as a system-wide systemd service: The service runs with FIFO 20 real-time priority to be robust against high-priority CPU hogs blocking spinning up the fans.
 
 ```
 cd zen-fan

@@ -3,12 +3,14 @@ Description=zen-fan fan control service
 RequiresMountsFor=/sys/class/hwmon
 
 [Service]
+CPUSchedulingPolicy=fifo
+CPUSchedulingPriority=20
 ExecStart=/etc/systemd/system/zen-fan.service.d/zen-fan
 Restart=on-failure
 RestartSec=3
 Environment="TIMESTAMP=0"
 WorkingDirectory=/etc
-TimerSlackNSec=2000000000
+TimerSlackNSec=1000000000
 
 [Install]
 WantedBy=default.target
