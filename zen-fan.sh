@@ -10,21 +10,29 @@ else
     function log { echo "$1"; }
 fi
 
-host_cfg=$PWD/zen-fan.d/host.$HOSTNAME.cfg
-
-declare -i verbose=1
-function v1off ((verbose<1))
-function v2off ((verbose<2))
-function v3off ((verbose<3))
-function set_verbose {
-    verbose=$(($1 < 0 ? 0 : $1 > 3 ? 3 : $1))
-    log "set_verbose $verbose"
-    v3off && set +x || set -x
-}
-
 function raise {
     log "Error: $1" >&2
     exit 1
+}
+
+host_cfg=$PWD/zen-fan.d/host.$HOSTNAME.cfg
+
+declare -i verbose=1
+function set_verbose {
+    verbose=$(($1 < 0 ? 0 : $1 > 3 ? 3 : $1))
+    log "set_verbose $verbose"
+    ((verbose < 3)) && set +x || set -x
+}
+
+function on_sigusr {
+    log "Received $2."
+    set_verbose $((verbose + $1))
+}
+
+declare sleep_sec=3
+function set_sleep_sec {
+    sleep_sec=$1
+    log "set_sleep_sec $1"
 }
 
 function apply {
@@ -70,6 +78,7 @@ function map_temp_to_rpm {
 function set_fan_rpm {
     local fan=$1
     echo $new_rpm >${fan}_target
+    # echo $new_rpm >${fan}_target || :
 }
 
 function update_fan_group_rpm {
@@ -129,44 +138,34 @@ function format_fan_group_target {
     local -n new_rpm=rpm_fan_$1
     local -n old_rpm=prev_rpm_fan_$1
     local -i a=$(( (new_rpm > old_rpm) - (new_rpm < old_rpm) + 1 ))
+    n_rpm_updates+="a != 1"
     line+="$1 fans target ${new_rpm}rpm${action_names[$a]}, "
 }
 
-function log_status {
-    local line=""
-    apply format_temp_sensor temp_sensors
-    apply format_fan_group fan_groups
-    log "${line:0:-2}."
-}
-
 function log_target_rpm {
+    local -i n_rpm_updates=0
     local line=""
     apply format_temp_sensor temp_sensors
+    ((verbose < 2)) || apply format_fan_group fan_groups
     apply format_fan_group_target fan_groups
 
-    # Log when any fan target rpm changes.
-    if [[ "$line" =~ rpm[-+] ]]; then
+    # Log when any fan target rpm changes or verbose=>2.
+    if((n_rpm_updates || verbose >= 2)); then
         log "${line:0:-2}."
     fi
 }
 
+# function log_status {
+#     log "pid $$/$BASHPID received $1."
+#     local verbose=2
+#     log_target_rpm
+# }
+
 function update_fan_speeds {
     apply read_temp_sensor temp_sensors
-    v2off || log_status
     apply map_temp_to_rpm sensors_to_fan_groups
-    v1off || log_target_rpm
+    ((verbose < 1)) || log_target_rpm
     apply update_fan_group_rpm fan_groups
-}
-
-declare -i sleep_sec=7
-function set_sleep_sec {
-    sleep_sec=$1
-    log "set_sleep_sec $1"
-}
-
-function on_sigusr {
-    set_verbose $((verbose + $1))
-    log "$2 verbose=$verbose."
 }
 
 # Temperature sensors and fan controls files get re-opened on each read or write because bash cannot rewind open file descriptors.
@@ -176,23 +175,20 @@ cd /sys/class/hwmon
 log "Config is $host_cfg."
 source $host_cfg
 
-# Environment variables override config.
-if [[ -v V ]]; then set_verbose $V; fi
-if [[ -v SLEEP ]]; then set_sleep_sec $SLEEP; fi
-
 function create_sleep2 {
     coproc sleep2_pipe { read; }
     function sleep2 { read -t$1 -u${sleep2_pipe[0]} || (($?>128)); }
 }
 
 trap "" SIGUSR1 SIGUSR2 SIGHUP
+declare -i N=${N:--1}
 
 # cd ~/src/zen-fan/; TEST=1 sudo -E ./zen-fan.sh
 if((${TEST:-0})); then
     function test_signals {
         set +e -x
-        create_sleep2
         local pid=$1
+        create_sleep2
         for((i=4;i--;)); do
             sleep2 2
             kill -USR1 $pid
@@ -203,13 +199,22 @@ if((${TEST:-0})); then
         done
         sleep2 2
         kill -USR1 $pid
-        kill -HUP $pid
+        # kill -HUP $pid
     }
 
     SLEEP=0.5
     N=40
     test_signals $$ &
 fi
+
+# Environment variables override config.
+if [[ -v V ]]; then set_verbose $V; fi
+if [[ -v SLEEP ]]; then set_sleep_sec $SLEEP; fi
+
+create_sleep2
+trap 'on_sigusr +1 SIGUSR1' SIGUSR1
+trap 'on_sigusr -1 SIGUSR2' SIGUSR2
+# trap 'log_status SIGHUP' SIGHUP
 
 # Always log on start.
 function update_and_log {
@@ -218,13 +223,7 @@ function update_and_log {
 }
 update_and_log
 
-declare -i N=${N:--1}
 if((N)); then
-    create_sleep2
-    trap 'on_sigusr +1 SIGUSR1' SIGUSR1
-    trap 'on_sigusr -1 SIGUSR2' SIGUSR2
-    trap 'log_status' SIGHUP
-
     trap 'log "Fan control loop terminated."' EXIT
     log "Fan control loop started. Adjust fans every $sleep_sec seconds for $N iterations."
     while((N -= N > 0)); do
