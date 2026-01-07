@@ -60,8 +60,29 @@ function find_hwmon {
 function read_temp_sensor {
     local -n temp=temp_$1
     local -n file=sensor_file_${1}
+    # hwmon reports in milli-degree units.
     read temp <${file}_input
-    temp=$((temp / 1000))
+}
+
+sensors_to_fan_groups=()
+function set_temp_to_rpm {
+    local sensor=$1
+
+    # hwmon reports in milli-degree units.
+    # Convert integer °C units to milli-degree units.
+    local -i temp_min="$2 * 1000"
+    local -i temp_max="$3 * 1000"
+    local -i temp_range="temp_max - temp_min"
+
+    local fan_group=$4
+
+    local -i rpm_min=$5
+    local -i rpm_max=$6
+    local -i rpm_step=$7
+    local -i rpm_range="rpm_max - rpm_min"
+    local -i rpm_step_100="$rpm_step * 100"
+
+    sensors_to_fan_groups+=("$sensor $temp_min $temp_max $fan_group $rpm_min $rpm_max $rpm_step $temp_range $rpm_range $rpm_step_100")
 }
 
 function map_temp_to_rpm {
@@ -71,8 +92,11 @@ function map_temp_to_rpm {
     local -i rpm_min=$5
     local -i rpm_max=$6
     local -i rpm_step=$7
-    local -i temp_pct=$(( ((temp < temp_min ? temp_min : (temp > temp_max ? temp_max : temp)) - temp_min) * 100 / (temp_max - temp_min) ))
-    declare -gi rpm_fan_$4=$(( rpm_min + ((rpm_max - rpm_min) * temp_pct / 100) / rpm_step * rpm_step ))
+    local -i temp_range=$8
+    local -i rpm_range=$9
+    local -i rpm_step_100=${10}
+    local -i temp_pct="((temp < temp_min ? temp_min : (temp > temp_max ? temp_max : temp)) - temp_min) * 100 / temp_range"
+    declare -gi rpm_fan_$4="rpm_min + rpm_range * temp_pct / rpm_step_100 * rpm_step"
 }
 
 function set_fan_rpm {
@@ -107,19 +131,16 @@ function create_temp_sensor {
     temp_sensors+=($1)
     local name=$1 hwmon_name=$2
     local -n file=sensor_file_$1 path=$2
-    declare -g temp_$1
+    declare -gi temp_$1
     file=$path/$3
     log "$name temperature sensor is $hwmon_name $file."
 }
 
-sensors_to_fan_groups=()
-function set_temp_to_rpm {
-    sensors_to_fan_groups+=("$*")
-}
-
 function format_temp_sensor {
     local -n temp=temp_$1
-    line+="$1 $temp°C, "
+    local msg
+    printf -v msg '%s %.1f°C, ' "$1" "${temp}e-3"
+    line+="$msg"
 }
 
 function format_fan {
