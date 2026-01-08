@@ -3,6 +3,7 @@
 # Copyright (c) 2023 Maxim Egorushkin. MIT License. See the full licence in file LICENSE.
 
 set -eu
+unset IFS
 
 if((${TIMESTAMP:-1})); then
     function log { printf '%(%F %T)T %s\n' -1 "$1"; }
@@ -139,15 +140,15 @@ function create_temp_sensor {
 function format_temp_sensor {
     local -n temp=temp_$1
     local msg
-    printf -v msg '%s %.1f°C, ' "$1" "${temp}e-3"
-    line+="$msg"
+    printf -v msg '%s %.1f°C,' "$1" "${temp}e-3"
+    msgs+=("$msg")
 }
 
 function format_fan {
     local fan=$1
     local cur_rpm
     read cur_rpm <${fan}_input
-    line+="$fan ${cur_rpm}rpm, "
+    msgs+=("$fan ${cur_rpm}rpm,")
 }
 
 function format_fan_group {
@@ -160,19 +161,25 @@ function format_fan_group_target {
     local -n old_rpm=prev_rpm_fan_$1
     local -i a=$(( (new_rpm > old_rpm) - (new_rpm < old_rpm) + 1 ))
     n_rpm_updates+="a != 1"
-    line+="$1 fans target ${new_rpm}rpm${action_names[$a]}, "
+    msgs+=("$1 fans target ${new_rpm}rpm${action_names[$a]},")
 }
 
 function log_target_rpm {
     local -i n_rpm_updates=0
-    local line=""
+
+    # An array of formatted messages to log in one line.
+    # Appending to a string is O(N).
+    # Appending to an array is O(1).
+    local msgs=()
+
     apply format_temp_sensor temp_sensors
     ((verbose < 2)) || apply format_fan_group fan_groups
     apply format_fan_group_target fan_groups
 
     # Log when any fan target rpm changes or verbose=>2.
     if((n_rpm_updates || verbose >= 2)); then
-        log "${line:0:-2}."
+        local line="${msgs[*]}"
+        log "${line:0:-1}."
     fi
 }
 
