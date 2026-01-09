@@ -18,8 +18,9 @@ To achieve its design objectives `zen-fan`:
 * Is written in plain `bash` using version 4 features. No compilation is required.
 * Doesn't invoke any other executables and doesn't depend on any other software.
 * Doesn't spawn any processes/threads on each iteration.
+* Has built-in benchmark.
 
-Empirical average CPU time of one iteration is under 27 milliseconds, resident size is under 4MB.
+Average CPU time of one iteration of the fan control loop with minimal configuration (one sensor and one fan) is below 1 millisecond, resident size is under 4MM.
 
 `zen-fan` was inspired by [`fancontrol`][1]. Unlike `fancontrol`,`zen-fan`:
 * Doesn't fail to start when hardware changes, devices get different identifiers on reboot, or a USB device is plugged-in/out.
@@ -44,6 +45,54 @@ Once the configuration is ready, you can keep running `zen-fan` from the source 
 ```
 cd zen-fan
 sudo -E ./zen-fan.sh
+```
+
+## Benchmark
+The built-in benchmark runs the fan control loop for a number of iterations and reports the average time of one iteration. This time depends on the particular configuration, software and hardware.
+
+Benchmark command:
+
+```
+cd zen-fan
+V=0 BENCHMARK=10000 sudo -E /bin/time -v ./zen-fan.sh
+```
+
+Example output:
+```
+2026-01-09 07:04:12 Config is /home/max/src/zen-fan/zen-fan.d/host.supernova2.cfg.
+2026-01-09 07:04:12 set_verbose 2
+2026-01-09 07:04:12 set_sleep_sec 2
+2026-01-09 07:04:12 k10temp is /sys/class/hwmon/hwmon4.
+2026-01-09 07:04:12 dell_smm is /sys/class/hwmon/hwmon5.
+2026-01-09 07:04:12 CPU temperature sensor is k10temp hwmon4/temp1.
+2026-01-09 07:04:12 Fans front dell_smm hwmon5/fan1.
+2026-01-09 07:04:12 set_verbose 0
+2026-01-09 07:04:12 CPU 58.6°C, hwmon5/fan1 4435rpm, front fans target 4600rpm+.
+2026-01-09 07:04:12 Benchmark 10,000 iterations.
+2026-01-09 07:04:13 Benchmark 10,000 iterations took 0.895617 seconds, 0.000090 seconds/iteration.
+	Command being timed: "./zen-fan.sh"
+	User time (seconds): 0.86
+	System time (seconds): 0.06
+	Percent of CPU this job got: 98%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.94
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 3712
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 277
+	Voluntary context switches: 1
+	Involuntary context switches: 247
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
 ```
 
 # Install systemd service

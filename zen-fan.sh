@@ -7,8 +7,19 @@ unset IFS
 
 if((${TIMESTAMP:-1})); then
     function log { printf '%(%F %T)T %s\n' -1 "$1"; }
+
+    function logf {
+        local fmt="$1"
+        shift
+        printf "%(%F %T)T $fmt\n" -1 "$@"
+    }
 else
     function log { echo "$1"; }
+    function logf {
+        local msg
+        printf -v msg "$@"
+        echo "$msg"
+    }
 fi
 
 function raise {
@@ -251,12 +262,38 @@ function update_and_log {
 }
 update_and_log
 
-if((N)); then
+function main {
     trap 'log "Fan control loop terminated."' EXIT
     log "Fan control loop started. Adjust fans every $sleep_sec seconds for $N iterations."
     while((N -= N > 0)); do
         sleep2 $sleep_sec
         update_fan_speeds
     done
-    :
+}
+
+# cd ~/src/zen-fan/; BENCHMARK=10000 V=0 sudo -E ./zen-fan.sh
+function benchmark {
+    logf "Benchmark %'d iterations." $BENCHMARK
+
+    function run {
+        local -i n=$1
+        while((n--)); do
+            update_fan_speeds
+        done
+    }
+
+    run 3 # Warm-up.
+    local -i t0=${EPOCHREALTIME/./}
+    run $BENCHMARK
+    local -i t1=${EPOCHREALTIME/./}
+
+    local -i time_usec="t1 - t0"
+    local -i rate_nsec="time_usec * 1000 / $BENCHMARK"
+    logf "Benchmark %'d iterations took %.6f seconds, %.6f seconds/iteration." $BENCHMARK ${time_usec}e-6  ${rate_nsec}e-9
+}
+
+if((${BENCHMARK:-0})); then
+    benchmark
+elif((N)); then
+    main
 fi
